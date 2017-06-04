@@ -13,4 +13,17 @@ void read_little_endian_bytes(
     uint8_t* result ///< [out] The result
 );
 
+///
+/// Decompresses RLEW-compressed data.
+///
+/// \return `true` if successful, `false` otherwise
+///
+bool rlew_decompress(
+    uint8_t  *data,         ///< [in]  Data to decompress
+    size_t   data_length,   ///< [in]  The length of the data to decompress
+    uint16_t flag,          ///< [in]  The RLEW flag marking compressed data
+    uint16_t **result,      ///< [out] The dynamically allocated, decompressed data
+    size_t   *result_length ///< [out] The length of the decompressed data
+);
+
 #endif
