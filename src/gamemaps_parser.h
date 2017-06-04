@@ -50,9 +50,11 @@ bool parse_map_header(
 /// \return `true` if successful, `false` otherwise
 ///
 bool parse_map_data(
-    uint8_t    *data,       ///< [in]  Raw map data
-    size_t     data_length, ///< [in]  The length of the raw map data
-    map_data_t *map_data    ///< [out] Parsed map data
+    uint8_t    *data,             ///< [in]  Raw map data
+    size_t     data_length,       ///< [in]  The length of the raw map data
+    uint32_t   *level_offsets,    ///< [in]  Level header offsets
+    size_t     level_offsets_num, ///< [in]  The number of level header offsets
+    map_data_t *map_data          ///< [out] Parsed map data
 );
 
 #endif
