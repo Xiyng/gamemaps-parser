@@ -30,6 +30,6 @@ bool parse_map_header(
 
 inline void read_little_endian_bytes(uint8_t *data, size_t length, uint8_t* result) {
     for (size_t i = 0; i < length; i++) {
-        *(result + i) = data[length - i];
+        *(result + i) = data[length - i - 1];
     }
 }
