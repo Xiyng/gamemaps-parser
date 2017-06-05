@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include "gamemaps_parser.h"
 #include "gamemaps_parser_internal.h"
 
@@ -25,6 +26,97 @@ bool parse_map_header(
         uint32_t *target = &level_pointers[i];
         read_little_endian_bytes(header + offset, 4, (uint8_t *)target);
     }
+
+    return true;
+}
+
+bool parse_map_data(
+    uint8_t    *data,
+    size_t     data_length,
+    uint16_t   flag,
+    size_t     planes,
+    uint32_t   *level_offsets,
+    size_t     level_offsets_num,
+    map_data_t *map_data
+) {
+    if (
+        data == NULL ||
+        data_length < 0 ||
+        level_offsets == NULL ||
+        level_offsets < 0 ||
+        map_data == NULL
+    ) {
+        return false;
+    }
+
+    const char prefix[] = "TED5v1.0";
+    const size_t prefix_length = strlen(prefix);
+    if (!strncmp(data, prefix, prefix_length)) {
+        return false;
+    }
+
+    level_t *levels = malloc(level_offsets_num * sizeof(level_t));
+
+    for (size_t level_i = 0; level_i < level_offsets_num; level_i++) {
+        const uint32_t level_offset = level_offsets[level_i];
+        const uint32_t plane_offsets_offset = 0;
+        const uint32_t plane_data_offsets_offset = planes * 4;
+        const uint32_t other_data_offset = plane_data_offsets_offset + planes * 2;
+
+        levels[level_i].planes = malloc(planes * sizeof(plane_t));
+
+        for (size_t plane_i = 0; plane_i < planes; plane_i++) {
+            uint32_t plane_offset;
+            read_little_endian_bytes(
+                (uint8_t *)(level_offset + plane_offsets_offset + 4 * plane_i),
+                4,
+                (uint8_t *)&plane_offset
+            );
+
+            uint16_t plane_length;
+            read_little_endian_bytes(
+                (uint8_t *)(level_offset + plane_data_offsets_offset + 2 * plane_i),
+                2,
+                (uint8_t *)&plane_length
+            );
+
+            uint16_t *decompressed_plane_data;
+            size_t decompressed_plane_length;
+            rlew_decompress(
+                (uint8_t *)(data + plane_offset),
+                (size_t)plane_length,
+                flag,
+                &decompressed_plane_data,
+                &decompressed_plane_length
+            );
+
+            levels[level_i].planes[plane_i].data = decompressed_plane_data;
+            levels[level_i].planes[plane_i].length = decompressed_plane_length;
+        }
+
+        levels[level_i].planes_num = planes;
+
+        uint16_t width;
+        read_little_endian_bytes(
+            (uint8_t *)(level_offset + other_data_offset),
+            2,
+            (uint8_t *)&(levels[level_i].width)
+        );
+
+        uint16_t height;
+        read_little_endian_bytes(
+            (uint8_t *)(level_offset + other_data_offset),
+            4,
+            (uint8_t *)&(levels[level_i].height)
+        );
+
+        uint8_t name[16];
+
+        strncpy(&(levels[level_i].name), (const char *)(level_offset + other_data_offset + 4), 16);
+    }
+
+    map_data->levels = levels;
+    map_data->levels_num = level_offsets_num;
 
     return true;
 }
