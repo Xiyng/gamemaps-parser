@@ -146,7 +146,7 @@ bool rlew_decompress(
     }
     size_t decompressed_length = 0;
 
-    uint8_t flag_byte_1 = (uint8_t)(flag & (((uint16_t)0xff) << 4) >> 4);
+    uint8_t flag_byte_1 = (uint8_t)(flag & (((uint16_t)0xff) << 8) >> 8);
     uint8_t flag_byte_2 = (uint8_t)(flag & ((uint16_t)0xff));
 
     size_t data_i = 0;
