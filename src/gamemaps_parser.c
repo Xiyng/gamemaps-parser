@@ -6,7 +6,7 @@
 bool parse_map_header(
     uint8_t *header,
     size_t length,
-    uint32_t *level_pointers,
+    uint32_t **level_pointers,
     size_t *level_pointers_length
 ) {
     const size_t min_length = 402;
@@ -21,9 +21,10 @@ bool parse_map_header(
     }
 
     *level_pointers_length = 100;
+    *level_pointers = malloc(*level_pointers_length * 32);
     for (size_t i = 0; i < *level_pointers_length; i++) {
         size_t offset = 4 * i + 2;
-        uint32_t *target = &level_pointers[i];
+        uint32_t *target = &((*level_pointers)[i]);
         read_little_endian_bytes(header + offset, 4, (uint8_t *)target);
     }
 
