@@ -1,9 +1,18 @@
 #ifndef GAMEMAPS_PARSER_H
 #define GAMEMAPS_PARSER_H
 
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+typedef enum {
+    gamemaps_parser_err_none                = 0,
+    gamemaps_parser_err_unknown             = 1,
+    gamemaps_parser_err_null                = 2,
+    gamemaps_parser_err_negative_length     = 3,
+    gamemaps_parser_err_not_long_enough     = 4,
+    gamemaps_parser_err_identifier_mismatch = 5,
+    gamemaps_parser_err_allocation_failed   = 6
+} gamemaps_parser_error_t;
 
 ///
 /// A structure representing a plane
@@ -35,9 +44,9 @@ typedef struct {
 ///
 /// Parses content of the map header file.
 ///
-/// \return `true` if successful, `false` otherwise
+/// \return An error code representing either success or some specific error
 ///
-bool parse_map_header(
+gamemaps_parser_error_t parse_map_header(
     uint8_t  *header,                ///< [in]  The content of the map header file
     size_t   length,                 ///< [in]  The length of the map header file
     uint32_t **level_pointers,       ///< [out] The dynamically allocated level pointers array
@@ -47,9 +56,9 @@ bool parse_map_header(
 ///
 /// Parses content of the map data file.
 ///
-/// \return `true` if successful, `false` otherwise
+/// \return An error code representing either success or some specific error
 ///
-bool parse_map_data(
+gamemaps_parser_error_t parse_map_data(
     uint8_t    *data,             ///< [in]  Raw map data
     size_t     data_length,       ///< [in]  The length of the raw map data
     uint16_t   flag,              ///< [in]  The RLEW flag marking compressed data

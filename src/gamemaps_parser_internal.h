@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "gamemaps_parser.h"
 
 ///
 /// Reads several bytes of little-endian data to a single variable.
@@ -16,9 +17,9 @@ void read_little_endian_bytes(
 ///
 /// Decompresses RLEW-compressed data.
 ///
-/// \return `true` if successful, `false` otherwise
+/// \return An error code representing either success or some specific error
 ///
-bool rlew_decompress(
+gamemaps_parser_error_t rlew_decompress(
     uint8_t  *data,         ///< [in]  Data to decompress
     size_t   data_length,   ///< [in]  The length of the data to decompress
     uint16_t flag,          ///< [in]  The RLEW flag marking compressed data

@@ -3,7 +3,7 @@
 #include "gamemaps_parser.h"
 #include "gamemaps_parser_internal.h"
 
-bool parse_map_header(
+gamemaps_parser_error_t parse_map_header(
     uint8_t *header,
     size_t length,
     uint32_t **level_pointers,
@@ -11,13 +11,13 @@ bool parse_map_header(
 ) {
     const size_t min_length = 402;
     if (length < min_length) {
-        return false;
+        return gamemaps_parser_err_not_long_enough;
     }
 
     uint16_t start;
     read_little_endian_bytes(header, 2, (uint8_t *)(&start));
     if (start != 0xabcd) {
-        return false;
+        return gamemaps_parser_err_identifier_mismatch;
     }
 
     *level_pointers_length = 100;
@@ -28,10 +28,10 @@ bool parse_map_header(
         read_little_endian_bytes(header + offset, 4, (uint8_t *)target);
     }
 
-    return true;
+    return gamemaps_parser_err_none;
 }
 
-bool parse_map_data(
+gamemaps_parser_error_t parse_map_data(
     uint8_t    *data,
     size_t     data_length,
     uint16_t   flag,
@@ -41,19 +41,17 @@ bool parse_map_data(
     map_data_t *map_data
 ) {
     if (
-        data == NULL ||
-        data_length < 0 ||
-        level_offsets == NULL ||
-        level_offsets < 0 ||
-        map_data == NULL
-    ) {
-        return false;
+        data == NULL || level_offsets == NULL || map_data == NULL) {
+        return gamemaps_parser_err_null;
+    }
+    if (data_length < 0 || level_offsets < 0) {
+        return gamemaps_parser_err_negative_length;
     }
 
     const char prefix[] = "TED5v1.0";
     const size_t prefix_length = strlen(prefix);
-    if (!strncmp(data, prefix, prefix_length)) {
-        return false;
+    if (strncmp(data, prefix, prefix_length)) {
+        return gamemaps_parser_err_identifier_mismatch;
     }
 
     level_t *levels = malloc(level_offsets_num * sizeof(level_t));
@@ -69,14 +67,14 @@ bool parse_map_data(
         for (size_t plane_i = 0; plane_i < planes; plane_i++) {
             uint32_t plane_offset;
             read_little_endian_bytes(
-                (uint8_t *)(level_offset + plane_offsets_offset + 4 * plane_i),
+                data + level_offset + plane_offsets_offset + 4 * plane_i,
                 4,
                 (uint8_t *)&plane_offset
             );
 
             uint16_t plane_length;
             read_little_endian_bytes(
-                (uint8_t *)(level_offset + plane_data_offsets_offset + 2 * plane_i),
+                data + level_offset + plane_data_offsets_offset + 2 * plane_i,
                 2,
                 (uint8_t *)&plane_length
             );
@@ -97,70 +95,76 @@ bool parse_map_data(
 
         levels[level_i].planes_num = planes;
 
-        uint16_t width;
         read_little_endian_bytes(
-            (uint8_t *)(level_offset + other_data_offset),
+
+            data + level_offset + other_data_offset,
             2,
             (uint8_t *)&(levels[level_i].width)
         );
 
-        uint16_t height;
         read_little_endian_bytes(
-            (uint8_t *)(level_offset + other_data_offset),
+            data + level_offset + other_data_offset,
             4,
             (uint8_t *)&(levels[level_i].height)
         );
 
-        uint8_t name[16];
-
-        strncpy(&(levels[level_i].name), (const char *)(level_offset + other_data_offset + 4), 16);
+        strncpy(&(levels[level_i].name), (const char *)(data + level_offset + other_data_offset + 4), 16);
+        printf("This is OK.\n");
     }
+    printf("This is not.\n");
 
     map_data->levels = levels;
     map_data->levels_num = level_offsets_num;
 
-    return true;
+    return gamemaps_parser_err_none;
 }
 
 inline void read_little_endian_bytes(uint8_t *data, size_t length, uint8_t* result) {
     for (size_t i = 0; i < length; i++) {
-        *(result + i) = data[length - i - 1];
+        result[i] = data[i];
     }
 }
 
-bool rlew_decompress(
+gamemaps_parser_error_t rlew_decompress(
     uint8_t  *data,
     size_t   data_length,
     uint16_t flag,
     uint16_t **result,
     size_t   *result_length
 ) {
-    if (data == NULL || data_length < 1 || result == NULL || result_length == NULL) {
-        return false;
+    if (data == NULL || result == NULL || result_length == NULL) {
+        return gamemaps_parser_err_null;
+    }
+    if (data_length < 1) {
+        return gamemaps_parser_err_not_long_enough;
+    }
+    if (data_length % 2 != 0) {
+        return gamemaps_parser_err_unknown;
     }
 
     size_t buffer_length = data_length;
     uint16_t *decompressed = malloc(buffer_length);
     if (decompressed == NULL) {
-        return false;
+        return gamemaps_parser_err_allocation_failed;
     }
     size_t decompressed_length = 0;
 
-    uint8_t flag_byte_1 = (uint8_t)(flag & (((uint16_t)0xff) << 8) >> 8);
-    uint8_t flag_byte_2 = (uint8_t)(flag & ((uint16_t)0xff));
+    uint8_t flag_byte_1 = ((uint8_t *)&flag)[0];
+    uint8_t flag_byte_2 = ((uint8_t *)&flag)[1];
 
     size_t data_i = 0;
     size_t decompressed_i = 0;
     while (data_i < data_length) {
         if (
-            data_i + 2 >= data_length &&
+            data_i + 7 < data_length &&
             data[data_i] == flag_byte_1 &&
             data[data_i + 1] == flag_byte_2
         ) {
             uint32_t n;
             read_little_endian_bytes(data + data_i + 2, 4, (uint8_t *)&n);
             if (data_i + n >= data_length) {
-                return false;
+                free(decompressed);
+                return gamemaps_parser_err_unknown;
             }
             uint16_t word;
             read_little_endian_bytes(data + data_i + 6, 2, (uint8_t *)&word);
@@ -180,11 +184,12 @@ bool rlew_decompress(
             }
             decompressed_length += n;
 
-            data_i += 6 + n;
+            data_i += 8;
         }
         else {
-            if (data_i + 2 >= data_length) {
-                return false;
+            if (data_i + 1 >= data_length) {
+                free(decompressed);
+                return gamemaps_parser_err_unknown;
             }
             if (decompressed_i + 1 > buffer_length) {
                 uint16_t *old = decompressed;
@@ -196,7 +201,7 @@ bool rlew_decompress(
             }
 
             uint16_t word;
-            read_little_endian_bytes(data + data_i + 6, 2, (uint8_t *)&word);
+            read_little_endian_bytes(data + data_i, 2, (uint8_t *)&word);
             decompressed[decompressed_i] = word;
             decompressed_length++;
 
@@ -208,5 +213,5 @@ bool rlew_decompress(
     *result = decompressed;
     *result_length = decompressed_length;
 
-    return true;
+    return gamemaps_parser_err_none;
 }
