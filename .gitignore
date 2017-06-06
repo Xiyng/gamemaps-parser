@@ -61,3 +61,12 @@ cmake_install.cmake
 install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
+
+# CMake build directory
+build/
+
+# Game data for testing purposes
+test/game_data
+
+# CMake-generated files
+generated/
