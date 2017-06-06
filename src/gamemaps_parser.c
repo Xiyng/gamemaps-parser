@@ -109,9 +109,7 @@ gamemaps_parser_error_t parse_map_data(
         );
 
         strncpy(&(levels[level_i].name), (const char *)(data + level_offset + other_data_offset + 4), 16);
-        printf("This is OK.\n");
     }
-    printf("This is not.\n");
 
     map_data->levels = levels;
     map_data->levels_num = level_offsets_num;
