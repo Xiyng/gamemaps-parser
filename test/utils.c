@@ -140,5 +140,23 @@ bool test_rlew_decompress() {
     }
     free(result5);
 
+    uint8_t data6[] = { 0x63, 0xf6, 0xab, 0xcd, flag_byte_1, flag_byte_2, 0x02, 0x00, 0x00, 0x00, 0xde, 0xed, 0xfe, 0xef };
+    uint16_t *result6;
+    size_t result6_length;
+    err_code = rlew_decompress(data6, sizeof(data6), flag, &result6, &result6_length);
+    success =
+        err_code == gamemaps_parser_err_none &&
+        result6_length == 5 &&
+        result6[0] == 0xf663 &&
+        result6[1] == 0xcdab &&
+        result6[2] == 0xedde &&
+        result6[3] == 0xedde &&
+        result6[4] == 0xeffe;
+    printf(success ? "Test %d: PASS\n" : "Test %d: FAIL\n", 6);
+    if (!success) {
+        return false;
+    }
+    free(result6);
+
     return true;
 }
